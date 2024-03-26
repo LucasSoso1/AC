@@ -1,53 +1,162 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for
-import mysql.connector as ms
+from flask import Flask, render_template, json, request, jsonify
+from flaskext.mysql import MySQL
+#from werkzeug import generate_password_hash, check_password_hash
 
+mysql = MySQL()
 app = Flask(__name__)
 
-# Inicialização do MySQL
-# Substitua as informações de conexão conforme necessário
-mysql = ms.connect(
-    host='172.17.0.2',
-    user='root',
-    password='batata123',
-    database='teste'
-)
+# MySQL configurations
+app.config['MYSQL_DATABASE_USER'] = 'root'
+app.config['MYSQL_DATABASE_PASSWORD'] = 'batata123'
+app.config['MYSQL_DATABASE_DB'] = 'teste'
+app.config['MYSQL_DATABASE_HOST'] = 'db'
+mysql.init_app(app)
 
-# Lista temporária para armazenar os usuários registrados (vamos usar o banco de dados em vez disso)
-# registered_users = []
 
-@app.route('/', methods=['GET', 'POST'])
-def signup():
-    if request.method == 'POST':
-        name = request.form['inputName']
-        phone = request.form['inputPhone']
-        address = request.form['inputAddress']
-        
-        # Verifica se o telefone já está registrado no banco de dados
-        cursor = mysql.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM users WHERE phone = %s", (phone,))
-        user = cursor.fetchone()
-        cursor.close()
-        
-        if user:
-            return "Telefone já está registrado! Use outro."
-        
-        # Insere o novo usuário no banco de dados
-        cursor = mysql.cursor()
-        cursor.execute("INSERT INTO users (name, phone, address) VALUES (%s, %s, %s)", (name, phone, address))
-        mysql.commit()
-        cursor.close()
-        
-        # Redireciona para a página de sucesso com o nome do usuário como parâmetro
-        return redirect(url_for('success', name=name))
-    
+@app.route('/')
+def main():
+    return render_template('index.html')
+
+@app.route('/showSignUp')
+def showSignUp():
     return render_template('signup.html')
 
-@app.route('/success/<name>')
-def success(name):
-    return f"Usuário {name} registrado com sucesso!"
+@app.route('/signUp',methods=['POST','GET'])
+def signUp():
+    try:
+        _name = request.form['inputName']
+        _email = request.form['inputPhone']
+        _password = request.form['inputAddress']
+
+        # validate the received values
+        if _name and _email and _password:
+
+            conn = mysql.connect()
+            cursor = conn.cursor()
+            _hashed_password = _password
+            cursor.execute('insert into tbl_user (user_name, user_username, user_password) VALUES (%s, %s, %s)', ( _name,_email,_hashed_password))
+            conn.commit()
+
+            return render_template('signup.html')
+        else:
+            return json.dumps({'html':'<span>Enter the required fields</span>'})
+
+    except Exception as e:
+        return json.dumps({'error':str(e)})
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/list',methods=['POST','GET'])
+def listar():
+    try:
+            
+            conn = mysql.connect()
+            cursor = conn.cursor()
+            cursor.execute ('select user_name from tbl_user') 
+            data = cursor.fetchall()
+            print(data[0]);
+            for x in range(len(data)):
+                print(data[x])
+
+            conn.commit()
+            return render_template('signup2.html', datas=data)
+
+    except Exception as e:
+        return json.dumps({'error':str(e)})
+    finally:
+        cursor.close() 
+        conn.close()
+
+
+
+
+@app.route('/listjson',methods=['POST','GET'])
+def listjson():
+    try:
+            conn = mysql.connect()
+            cursor = conn.cursor()
+            cursor.execute ('select user_name from tbl_user') 
+            data = cursor.fetchall()
+            print(data[0]);
+            for x in range(len(data)):
+                print(data[x])
+
+            conn.commit()
+            return jsonify(data)
+
+    except Exception as e:
+        return json.dumps({'error':str(e)})
+    finally:
+        cursor.close() 
+        conn.close()
+
+
+@app.route('/teste')
+def index():
+    return render_template('testejson.html')
+
+
+@app.route('/teste2')
+def index2():
+    return render_template('testejson2.html')
+
+
+@app.route('/teste3')
+def index3():
+    return render_template('testejson3.html')
+
+@app.route('/teste4')
+def index4():
+    return render_template('testejson4.html')
+
+@app.route('/teste5')
+def index5():
+    return render_template('testejson5.html')
+
+@app.route('/api/say_name', methods=['POST'])
+def say_name():
+    json = request.get_json()
+    first_name = json['first_name']
+    last_name = json['last_name']
+    return jsonify(first_name=first_name, last_name=last_name)
+
+
+@app.route('/api/say_name2', methods=['POST'])
+def say_name2():
+    first = request.form['first_name']
+    print(first)
+    return jsonify(first_name=first)
+
+
+@app.route('/api/say_name3', methods=['POST'])
+def say_name3():
+    first = request.form['first']
+    print(first)
+    return jsonify(first_name=first)
+
+
+@app.route('/api/say_name4', methods=['POST'])
+def say_name4():
+    json = request.get_json()
+    first_name = json['first']
+    last_name = json['last']
+    return jsonify(first_name=first_name, last_name=last_name)
+
+
+@app.route('/api/say_name5', methods=['POST'])
+def say_name5():
+
+    json = request.get_json()
+    first_name = json['first']
+    last_name = json['last']
+    valor = json['combo']
+    return jsonify(first_name=valor)
+
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
